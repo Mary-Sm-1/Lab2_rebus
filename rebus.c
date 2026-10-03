@@ -60,89 +60,132 @@ static int parse(const char *input) {
     return 1;
 }
 
-/* ---------- collect unique letters ---------- */
+/* ---------- Optimization 2: sort letters by influence ---------- */
 
-static void collect_letters(void) {
-    for (int i = 0; i < ALPH_SIZE; i++) {
-        letter_digit[i] = -1;
-        leading[i] = 0;
-    }
-    letter_count = 0;
+/* Letters in the least significant positions (units, tens, ...) get
+   higher priority, so they are assigned first. This makes
+   check_last_column() prune earlier and more effectively. */
+static void sort_letters_by_influence(void) {
+    long long priority[ALPH_SIZE] = {0};
 
+    /* Contributions from summands */
     for (int i = 0; i < word_count; i++) {
         int len = (int)strlen(words[i]);
         for (int j = 0; j < len; j++) {
             int c = words[i][j] - 'A';
             if (c < 0 || c >= ALPH_SIZE) continue;
+            int power = len - 1 - j;   /* 0 = units, larger = higher */
+            priority[c] += (1LL << (10 - power));
+        }
+    }
+
+    /* Contributions from result */
+    int rlen = (int)strlen(result_word);
+    for (int j = 0; j < rlen; j++) {
+        int c = result_word[j] - 'A';
+        if (c < 0 || c >= ALPH_SIZE) continue;
+        int power = rlen - 1 - j;
+        priority[c] += (1LL << (10 - power));
+    }
+
+    /* Bubble sort letters[] by priority descending */
+    for (int i = 0; i < letter_count - 1; i++) {
+        for (int j = 0; j < letter_count - 1 - i; j++) {
+            int c1 = letters[j];
+            int c2 = letters[j + 1];
+            if (priority[c1] < priority[c2]) {
+                int t = letters[j];
+                letters[j] = letters[j + 1];
+		letters[j + 1] = t;
+            }
+
+        }
+    }
+}
+
+/* ---------- collect unique letters ---------- */
+
+
+static void collect_letters(void) {
+    for (int i = 0; i < ALPH_SIZE; i++) {
+
+        letter_digit[i] = -1;
+        leading[i] = 0;
+
+    }
+    letter_count = 0;
+
+    for (int i = 0; i < word_count; i++) {
+        int len = (int)strlen(words[i]);
+
+        for (int j = 0; j < len; j++) {
+            int c = words[i][j] - 'A';
+
+            if (c < 0 || c >= ALPH_SIZE) continue;
+
             if (letter_digit[c] == -1) {
+
                 letter_digit[c] = -2;
                 letters[letter_count++] = c;
+
             }
+
         }
         if (len > 1) leading[words[i][0] - 'A'] = 1;
+
     }
 
     int len = (int)strlen(result_word);
+
     for (int j = 0; j < len; j++) {
-	int c = result_word[j] - 'A'; 
+
+        int c = result_word[j] - 'A';
+
         if (c < 0 || c >= ALPH_SIZE) continue;
+
         if (letter_digit[c] == -1) {
 
             letter_digit[c] = -2;
+
             letters[letter_count++] = c;
-
         }
-
     }
+
     if (len > 1) leading[result_word[0] - 'A'] = 1;
 
 
-    /* sort letters alphabetically for deterministic order */
-
-    for (int i = 0; i < letter_count - 1; i++) {
-
-        for (int j = 0; j < letter_count - 1 - i; j++) {
-            if (letters[j] > letters[j + 1]) {
-                int t = letters[j];
-
-                letters[j] = letters[j + 1];
-
-                letters[j + 1] = t;
-            }
-
-        }
-    }
+    /* Optimization 2: sort letters by influence (units first) */
+    sort_letters_by_influence();
 
     for (int i = 0; i < letter_count; i++)
-        letter_digit[letters[i]] = -1;
-}
 
+        letter_digit[letters[i]] = -1;
+
+}
 
 /* ---------- numeric value ---------- */
 
 static long long word_value(const char *w) {
-    long long v = 0;
 
+    long long v = 0;
     for (int i = 0; w[i]; i++) {
         int c = w[i] - 'A';
+
         if (c < 0 || c >= ALPH_SIZE) return -1;
         if (letter_digit[c] < 0) return -1;
         v = v * 10 + letter_digit[c];
-
     }
     return v;
-
 }
 
 /* ---------- full check ---------- */
 
-static int check_full(void) {
 
+static int check_full(void) {
     long long sum = 0;
     for (int i = 0; i < word_count; i++) {
         long long v = word_value(words[i]);
         if (v < 0) return 0;
-
         sum += v;
     }
     long long r = word_value(result_word);
@@ -150,7 +193,7 @@ static int check_full(void) {
     return sum == r;
 }
 
-/* ---------- check the least significant column ---------- */
+/* ---------- Optimization 1: check units column ---------- */
 
 /* Returns 1 if the units column is either not complete yet
    or already consistent with the result. Returns 0 on contradiction. */
@@ -159,12 +202,12 @@ static int check_last_column(void) {
     for (int i = 0; i < word_count; i++) {
         int l = (int)strlen(words[i]);
         int c = words[i][l - 1] - 'A';
-        if (letter_digit[c] < 0) return 1;   
+        if (letter_digit[c] < 0) return 1;
         sum += letter_digit[c];
     }
     int rl = (int)strlen(result_word);
     int rc = result_word[rl - 1] - 'A';
-    if (letter_digit[rc] < 0) return 1;      
+    if (letter_digit[rc] < 0) return 1;
     return (sum % 10) == letter_digit[rc];
 }
 
