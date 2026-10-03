@@ -150,6 +150,24 @@ static int check_full(void) {
     return sum == r;
 }
 
+/* ---------- check the least significant column ---------- */
+
+/* Returns 1 if the units column is either not complete yet
+   or already consistent with the result. Returns 0 on contradiction. */
+static int check_last_column(void) {
+    long long sum = 0;
+    for (int i = 0; i < word_count; i++) {
+        int l = (int)strlen(words[i]);
+        int c = words[i][l - 1] - 'A';
+        if (letter_digit[c] < 0) return 1;   
+        sum += letter_digit[c];
+    }
+    int rl = (int)strlen(result_word);
+    int rc = result_word[rl - 1] - 'A';
+    if (letter_digit[rc] < 0) return 1;      
+    return (sum % 10) == letter_digit[rc];
+}
+
 /* ---------- recursive brute force ---------- */
 
 static int solve_rec(int idx) {
@@ -164,7 +182,8 @@ static int solve_rec(int idx) {
 
         letter_digit[c] = d;
         digit_used[d] = 1;
-        if (solve_rec(idx + 1)) return 1;
+        /* Optimization 1: early pruning on the units column */
+        if (check_last_column() && solve_rec(idx + 1)) return 1;
         digit_used[d] = 0;
         letter_digit[c] = -1;
     }
