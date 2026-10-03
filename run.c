@@ -3,7 +3,7 @@
 #include <time.h>
 #include "rebus.h"
 
-static const char *PUZZLES[] = {
+static const char* PUZZLES[] = {
     "SEND + MORE = MONEY",
     "BE + BE = MOO",
     "BIG + CAT = LION",
@@ -11,7 +11,7 @@ static const char *PUZZLES[] = {
     "ELEVEN + NINE + FIVE + FIVE = THIRTY"
 };
 
-static void run_one(const char *puzzle) {
+static void run_one(const char* puzzle) {
     clock_t t0 = clock();
     int ok = solve(puzzle);
     clock_t t1 = clock();
@@ -27,23 +27,19 @@ static void run_one(const char *puzzle) {
     printf("Recursive calls: %llu\n\n", get_rec_calls());
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     if (argc >= 2) {
         /* run only the puzzle(s) passed on the command line */
         for (int i = 1; i < argc; i++) {
             run_one(argv[i]);
         }
     }
-
-
-    /* no arguments: run all built-in puzzles */
-    int n = (int)(sizeof(PUZZLES) / sizeof(PUZZLES[0]));
-
-    for (int i = 0; i < n; i++) {
-
-        run_one(PUZZLES[i]);
-
+    else {
+        /* no arguments: run all built-in puzzles */
+        int n = (int)(sizeof(PUZZLES) / sizeof(PUZZLES[0]));
+        for (int i = 0; i < n; i++) {
+            run_one(PUZZLES[i]);
+        }
     }
-
     return 0;
 }
